@@ -23,11 +23,35 @@ uv sync --dev
 ## Usage
 
 ```python
-from src.scraper import GundertBibleScraper
+from gundert_bible_scraper.scraper import GundertBibleScraper
 
-scraper = GundertBibleScraper()
-# Add usage examples here
+# Initialize scraper for Gundert Bible site
+scraper = GundertBibleScraper(
+    base_url="https://opendigi.ub.uni-tuebingen.de/opendigi/GaXXXIV5_1"
+)
+
+# Scrape a specific page (returns transcript and image data)
+page_data = scraper.scrape_page(11)
+
+if page_data:
+    print(f"Page {page_data['page_number']}")
+    print(f"Transcript lines: {len(page_data['transcript'])}")
+    for line in page_data['transcript']:
+        print(f"  {line}")
+    
+    if page_data['image']:
+        print(f"Image URL: {page_data['image']['url']}")
 ```
+
+### Demo Script
+
+Run the included demo to see the scraper in action:
+
+```bash
+python demo.py
+```
+
+**Note**: The Gundert Bible website uses JavaScript to load content dynamically. The current implementation handles static HTML content. For full functionality with dynamic content, consider using tools like Selenium or Playwright.
 
 ## Testing
 

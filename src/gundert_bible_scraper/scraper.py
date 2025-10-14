@@ -54,3 +54,89 @@ class GundertBibleScraper:
         """
         elements = soup.select(selector)
         return [elem.get_text(strip=True) for elem in elements if elem.get_text(strip=True)]
+    
+    def extract_transcript(self, soup: BeautifulSoup) -> List[str]:
+        """Extract transcript text from Gundert Bible page.
+        
+        Args:
+            soup: BeautifulSoup object of the page
+            
+        Returns:
+            List of transcript lines (Malayalam text)
+        """
+        # Check if transcript is empty
+        empty_div = soup.find('div', {'id': 'transcript-empty'})
+        if empty_div and 'hidden' not in empty_div.get('class', []):
+            return []
+        
+        # Extract from transcript content area
+        transcript_content = soup.find('div', {'id': 'transcript-content'})
+        if not transcript_content:
+            return []
+        
+        # Get all paragraph elements
+        paragraphs = transcript_content.find_all('p')
+        lines = []
+        
+        for p in paragraphs:
+            text = p.get_text(strip=True)
+            if text:  # Only add non-empty lines
+                lines.append(text)
+        
+        return lines
+    
+    def extract_image_info(self, soup: BeautifulSoup) -> Optional[Dict[str, str]]:
+        """Extract image information from viewer window.
+        
+        Args:
+            soup: BeautifulSoup object of the page
+            
+        Returns:
+            Dictionary with image info or None if no image found
+        """
+        viewer_window = soup.find('div', {'id': 'viewer-window'})
+        if not viewer_window:
+            return None
+        
+        img = viewer_window.find('img')
+        if not img:
+            return None
+        
+        return {
+            'url': img.get('src', ''),
+            'alt_text': img.get('alt', ''),
+            'page_number': img.get('data-page', '')
+        }
+    
+    def build_page_url(self, page_number: int, tab: str = "transcript") -> str:
+        """Build URL for a specific page and tab.
+        
+        Args:
+            page_number: Page number to navigate to
+            tab: Tab to open (default: transcript)
+            
+        Returns:
+            Complete URL with page and tab parameters
+        """
+        return f"{self.base_url}#p={page_number}&tab={tab}"
+    
+    def scrape_page(self, page_number: int) -> Optional[Dict]:
+        """Scrape a complete page with transcript and image data.
+        
+        Args:
+            page_number: Page number to scrape
+            
+        Returns:
+            Dictionary with page data or None if failed
+        """
+        url = self.build_page_url(page_number)
+        soup = self.get_page(url)
+        
+        if not soup:
+            return None
+        
+        return {
+            'page_number': page_number,
+            'transcript': self.extract_transcript(soup),
+            'image': self.extract_image_info(soup)
+        }
