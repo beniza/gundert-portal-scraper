@@ -47,7 +47,73 @@ def transform(ctx, input_file, formats, output, validate):
             with open(input_file, 'r', encoding='utf-8') as f:
                 book_data = json.load(f)
             
-            book_storage = BookStorage(**book_data)
+            # Filter out unsupported fields and fix field name compatibility
+            filtered_data = {k: v for k, v in book_data.items() 
+                           if k not in ['download_statistics']}
+            
+            # Fix field name compatibility for book_metadata
+            if 'book_metadata' in filtered_data:
+                book_meta = filtered_data['book_metadata']
+                # Rename url to base_url
+                if 'url' in book_meta:
+                    book_meta['base_url'] = book_meta.pop('url')
+                # Remove extra fields not in BookMetadata schema
+                extra_fields = ['extraction_timestamp']
+                for field in extra_fields:
+                    book_meta.pop(field, None)
+                # Fix content_type for USFM compatibility  
+                if book_meta.get('content_type') == 'unknown':
+                    book_meta['content_type'] = 'all'  # Force compatibility by using "all"
+            
+            # Fix field compatibility for extraction_parameters
+            if 'extraction_parameters' in filtered_data:
+                extract_params = filtered_data['extraction_parameters']
+                # Remove extra fields not in ExtractionParameters schema
+                expected_fields = ['start_page', 'end_page', 'batch_size', 'preserve_formatting', 
+                                 'transcript_extraction', 'portal_type']
+                filtered_params = {k: v for k, v in extract_params.items() if k in expected_fields}
+                # Add missing required fields with defaults
+                filtered_params.setdefault('start_page', 1)
+                filtered_params.setdefault('end_page', 10)
+                filtered_params.setdefault('batch_size', 10)
+                filtered_params.setdefault('preserve_formatting', True)
+                filtered_params.setdefault('transcript_extraction', True)
+                filtered_params.setdefault('portal_type', 'opendigi')
+                filtered_data['extraction_parameters'] = filtered_params
+            
+            # Fix field compatibility for statistics
+            if 'statistics' in filtered_data:
+                stats = filtered_data['statistics']
+                expected_fields = ['pages_processed', 'pages_with_transcripts', 'pages_with_images',
+                                 'total_lines_extracted', 'extraction_start_time', 'extraction_end_time',
+                                 'extraction_duration_seconds', 'pages_per_minute', 'success_rate', 'errors']
+                filtered_stats = {k: v for k, v in stats.items() if k in expected_fields}
+                # Rename processing_duration_seconds to extraction_duration_seconds if present
+                if 'processing_duration_seconds' in stats:
+                    filtered_stats['extraction_duration_seconds'] = stats['processing_duration_seconds']
+                # Add missing required fields with defaults
+                filtered_stats.setdefault('pages_processed', 0)
+                filtered_stats.setdefault('pages_with_transcripts', 0)
+                filtered_stats.setdefault('pages_with_images', 0)
+                filtered_stats.setdefault('total_lines_extracted', 0)
+                filtered_stats.setdefault('extraction_start_time', None)
+                filtered_stats.setdefault('extraction_end_time', None)
+                filtered_stats.setdefault('extraction_duration_seconds', 0.0)
+                filtered_stats.setdefault('pages_per_minute', 0.0)
+                filtered_stats.setdefault('success_rate', 0.0)
+                filtered_stats.setdefault('errors', [])
+                filtered_data['statistics'] = filtered_stats
+            
+            # Fix page structure for USFM transformer compatibility
+            if 'pages' in filtered_data:
+                for page in filtered_data['pages']:
+                    if 'transcript_info' in page and 'lines' in page['transcript_info']:
+                        # Add transcript_text field expected by USFM transformer
+                        lines = page['transcript_info']['lines']
+                        transcript_text = '\n'.join(line.get('text', '') for line in lines)
+                        page['transcript_info']['transcript_text'] = transcript_text
+            
+            book_storage = BookStorage.from_dict(filtered_data)
             progress.update(load_task, completed=100)
             
             if not ctx.obj.get('quiet'):
