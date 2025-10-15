@@ -1,6 +1,6 @@
 # API Reference 📚
 
-Complete programmatic interface documentation for the Gundert Portal Scraper.
+Complete programmatic interface documentation for the Gundert Portal Scraper - a universal tool for extracting content from historical manuscript collections in multiple languages and diverse content types.
 
 ## Table of Contents
 
@@ -430,8 +430,8 @@ class BookMetadata(BaseModel):
     book_id: str
     title: Optional[str] = None
     portal_type: str
-    content_type: Optional[str] = None
-    language: str = "malayalam"
+    content_type: Optional[str] = None  # 'biblical', 'linguistic', 'literary', 'cultural', etc.
+    language: str = "malayalam"  # Default, but supports multiple languages
     source_url: Optional[str] = None
     extraction_date: datetime = Field(default_factory=datetime.now)
 ```
@@ -445,8 +445,8 @@ metadata = BookMetadata(
     book_id="PSA_example",
     title="സങ്കീർത്തനങ്ങൾ",
     portal_type="opendigi",
-    content_type="biblical",
-    language="malayalam",
+    content_type="biblical",  # Could also be 'linguistic', 'literary', 'cultural'
+    language="malayalam",     # Could be 'sanskrit', 'tamil', etc.
     source_url="https://opendigi.ub.uni-tuebingen.de/opendigi/GaXXXIV5_1"
 )
 ```

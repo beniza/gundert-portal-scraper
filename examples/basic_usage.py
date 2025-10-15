@@ -3,7 +3,8 @@
 Basic Usage Examples for Gundert Portal Scraper
 
 This file demonstrates fundamental usage patterns for extracting content
-from Malayalam manuscript portals and converting to various formats.
+from historical manuscript portals in multiple languages and formats.
+Works with Malayalam, Sanskrit, Tamil, and other Indian language manuscripts.
 
 Level: Beginner
 Use Case: Getting started with the scraper, basic extraction workflows
@@ -28,10 +29,10 @@ logger = logging.getLogger(__name__)
 
 
 def example_1_basic_extraction():
-    """Extract a small sample from a Malayalam manuscript."""
+    """Extract a small sample from a historical manuscript."""
     print("\n=== Example 1: Basic Extraction ===")
     
-    # Test URL - Gundert's Bible commentary
+    # Test URL - Gundert's manuscript collection (this example happens to be biblical content)
     test_url = "https://opendigi.ub.uni-tuebingen.de/opendigi/GaXXXIV5_1"
     
     try:

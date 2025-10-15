@@ -2,6 +2,8 @@
 
 Practical use cases and sample outputs demonstrating different scenarios for the Gundert Portal Scraper.
 
+> **Note**: While these examples use biblical content, the Gundert Portal Scraper works with **all types of manuscripts** in the collection, including linguistic studies, literary works, cultural documents, and scholarly texts in **multiple Indian languages** (Malayalam, Sanskrit, Tamil, etc.).
+
 ## Directory Structure
 
 ```

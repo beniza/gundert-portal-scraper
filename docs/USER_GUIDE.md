@@ -1,6 +1,8 @@
 # User Guide 📖
 
-Complete guide to using the Gundert Portal Scraper for extracting, transforming, and validating Malayalam manuscript content.
+# User Guide 📖
+
+Complete guide for using the Gundert Portal Scraper to extract and transform content from historical manuscript collections. Works with **multiple languages** (Malayalam, Sanskrit, Tamil, etc.) and **diverse content types** (biblical, linguistic, literary, cultural documents).
 
 ## Table of Contents
 
@@ -58,7 +60,7 @@ Global Options:
 
 ### Extract Command
 
-Extract Malayalam content from digital manuscript portals.
+Extract content from digital manuscript portals in multiple languages.
 
 #### Basic Syntax
 ```bash
@@ -209,7 +211,7 @@ gundert-scraper info --system-info
 
 ### Workflow 1: Academic Research Project
 
-**Goal**: Extract Malayalam psalms for digital humanities research
+**Goal**: Extract manuscript content for digital humanities research
 
 ```bash
 # Step 1: Extract content with academic formats

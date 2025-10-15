@@ -18,7 +18,9 @@ Comprehensive guide for developers contributing to or extending the Gundert Port
 
 The Gundert Portal Scraper follows a **modular, plugin-based architecture** designed for:
 
-- **Extensibility**: Easy addition of new portals, formats, and validators
+- **Extensibility**: Easy addition of new portals, formats, languages, and validators
+- **Multi-Language Support**: Handles Malayalam, Sanskrit, Tamil, and other Indian scripts
+- **Content Diversity**: Works with biblical, linguistic, literary, and cultural manuscripts
 - **Maintainability**: Clear separation of concerns with well-defined interfaces
 - **Testability**: Comprehensive test coverage with mocking capabilities
 - **Performance**: Efficient processing with async capabilities and batching
@@ -542,19 +544,20 @@ class CustomValidator(BaseValidator):
                 suggestion="Add header line starting with '#'"
             ))
         
-        # Check for Malayalam content
+        # Check for Indian script content (example with Malayalam)
         malayalam_chars = sum(1 for char in content if '\u0d00' <= char <= '\u0d7f')
+        # Could also check for other scripts: Sanskrit (\u0900-\u097f), Tamil (\u0b80-\u0bff), etc.
         total_chars = len(content.replace(' ', '').replace('\n', ''))
         
         if total_chars > 0:
-            malayalam_percentage = (malayalam_chars / total_chars) * 100
-            if malayalam_percentage < 50:
+            script_percentage = (malayalam_chars / total_chars) * 100
+            if script_percentage < 50:
                 issues.append(ValidationIssue(
                     severity=ValidationSeverity.WARNING,
-                    code="LOW_MALAYALAM_CONTENT",
-                    message=f"Only {malayalam_percentage:.1f}% Malayalam characters",
-                    context={'malayalam_percentage': malayalam_percentage},
-                    suggestion="Verify content extraction from Malayalam source"
+                    code="LOW_SCRIPT_CONTENT",
+                    message=f"Only {script_percentage:.1f}% expected script characters",
+                    context={'script_percentage': script_percentage},
+                    suggestion="Verify content extraction from expected source script"
                 ))
         
         # Check line consistency

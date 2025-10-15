@@ -1,8 +1,8 @@
 # Gundert Portal Scraper 🏛️
 
-> **Universal Malayalam Content Extractor for Historical Digital Manuscripts**
+> **Universal Digital Manuscript Extractor for Historical Collections**
 
-A comprehensive, production-ready tool for extracting, transforming, and validating Malayalam biblical content from the Gundert Portal and OpenDigi digital manuscript collections. Built with academic rigor and modern software engineering practices.
+A comprehensive, production-ready tool for extracting, transforming, and validating content from the Gundert Portal and OpenDigi digital manuscript collections. Works with **multiple Indian languages** and **diverse content types** including linguistic studies, religious texts, literary works, cultural documents, and scholarly manuscripts. Built with academic rigor and modern software engineering practices.
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -12,8 +12,10 @@ A comprehensive, production-ready tool for extracting, transforming, and validat
 
 ### **Universal Content Extraction**
 - 🔍 **Multi-Portal Support**: Works with Gundert Portal and OpenDigi collections
-- 📜 **Historical Manuscript Processing**: Specialized for 19th-century Malayalam texts
-- 🎯 **Intelligent Content Detection**: Automatically identifies Malayalam text regions
+- 🌍 **Multi-Language Support**: Handles Malayalam, Sanskrit, Tamil, and other Indian languages
+- � **Diverse Content Types**: Biblical texts, linguistic studies, literary works, cultural documents
+- �📜 **Historical Manuscript Processing**: Specialized for 19th-century digitized manuscripts
+- 🎯 **Intelligent Content Detection**: Automatically identifies text regions in multiple scripts
 - 📊 **Line-Level Preservation**: Maintains exact manuscript formatting and structure
 
 ### **Professional Transformation Pipeline**
@@ -49,7 +51,7 @@ pip install gundert-portal-scraper  # Coming soon to PyPI
 
 ### Basic Usage
 ```bash
-# Extract Malayalam content from OpenDigi
+# Extract content from Gundert Portal manuscripts
 gundert-scraper extract https://opendigi.ub.uni-tuebingen.de/opendigi/GaXXXIV5_1 \
   --formats usfm,docx --output ./extracted
 
@@ -112,7 +114,7 @@ src/gundert_portal_scraper/
 ## 🎯 Use Cases
 
 ### **Digital Humanities Research**
-- Extract and analyze Malayalam biblical manuscripts
+- Extract and analyze historical manuscripts in multiple Indian languages
 - Generate TEI XML for scholarly digital editions
 - Preserve historical text formatting and structure
 - Support comparative textual analysis
