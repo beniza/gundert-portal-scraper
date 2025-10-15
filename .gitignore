@@ -181,3 +181,6 @@ data/
 !requirements.txt
 !README.txt
 !README.md
+
+# Temporary development files
+temp/

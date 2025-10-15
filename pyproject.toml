@@ -13,15 +13,13 @@ authors = [
     {name = "Ben", email = "ben@example.com"},
 ]
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.10"
 classifiers = [
     "Development Status :: 2 - Pre-Alpha",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.8",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
@@ -30,7 +28,16 @@ dependencies = [
     "requests",
     "beautifulsoup4",
     "lxml",
+    "python-docx>=1.1.2",
+    "usfm-grammar>=3.1.2",
+    "jsonschema>=4.23.0",
+    "click>=8.3.0",
+    "rich>=14.2.0",
+    "tabulate>=0.9.0",
 ]
+
+[project.scripts]
+gundert-scraper = "gundert_portal_scraper.cli:cli"
 
 [project.optional-dependencies]
 dev = [
@@ -50,6 +57,8 @@ dev = [
     "pytest-cov>=5.0.0",
     "pytest-mock>=3.14.1",
     "responses>=0.25.8",
+    "selenium>=4.27.1",
+    "webdriver-manager>=4.0.2",
 ]
 
 [tool.pytest.ini_options]
@@ -88,7 +97,7 @@ exclude_lines = [
 
 [tool.black]
 line-length = 88
-target-version = ['py38']
+target-version = ['py310']
 include = '\.pyi?$'
 extend-exclude = '''
 /(
