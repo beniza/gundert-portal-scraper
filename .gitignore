@@ -170,17 +170,15 @@ ehthumbs.db
 Desktop.ini
 
 # Project specific
-data/
+cache/
+output/
 *.pkl
 *.pickle
-*.json
-*.csv
-*.txt
-*.xml
-*.html
-!requirements.txt
-!README.txt
-!README.md
+
+# Keep important config files
+!pyproject.toml
+!project_reconstruction_guide.json
 
 # Temporary development files
 temp/
+debug_*

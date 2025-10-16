@@ -1,0 +1,313 @@
+{
+  "project_overview": {
+    "name": "Gundert Portal Scraper - Text Extraction System",
+    "primary_goals": [
+      "Extract book content from Gundert Portal/OpenDigi digital manuscript collections",
+      "Transform extracted content to multiple output formats (USFM, TEI XML, BibleML, ParaBible JSON, DOCX) for various academic and publishing use cases and for Bible translation projects", 
+      "Provide production-ready CLI tool with validation and quality assurance"
+    ],
+    "key_challenge_solved": "The Gundert Portal content is stored as Single Page Applications (SPAs). So make a call to a page and download the content. Then perform the post downloaded operation on the downloaded content",
+    "example_target_url": "https://opendigi.ub.uni-tuebingen.de/opendigi/GaXXXIV5a",
+    "example_target_content": "Gundert's 1881 Malayalam Psalms manuscript"
+  },
+
+  "architectural_learnings": {
+    "two_phase_extraction_architecture": {
+      "rationale": "SPA websites require different extraction strategy than traditional multi-page sites",
+      "components": {
+        "download_phase": {
+          "purpose": "Single navigation to SPA website, cache all page structures and metadata",
+          "implementation": "Selenium WebDriver with JavaScript execution to load dynamic content"
+        },
+        "processing_phase": {
+          "purpose": "Extract real content from cached SPA DOM using JavaScript execution",
+          "key_insight": "Must execute JavaScript in browser context to get actual page-specific content, not server-side scraping",
+          "implementation": "CSS selectors targeting .transcript-text elements with SPA-specific DOM manipulation"
+        }
+      }
+    },
+
+    "spa_content_extraction_strategy": {
+      "task": "JavaScript-based extraction within loaded SPA context",
+      "critical_code_pattern": "driver.execute_script() to manipulate SPA navigation and extract real content",
+      "css_selectors": [
+        ".transcript-text",
+        ".info-content",
+        ".page-content"
+      ]
+    },
+
+    "format_transformation_pipeline": {
+      "plugin_architecture": "BaseTransformer with format-specific plugins",
+      "successful_formats": [
+        "TEI XML",
+        "DOCX",
+        "ParaBible JSON",
+		"USFM"
+      ],
+    }
+  },
+
+  "technical_stack": {
+    "core_technologies": {
+      "python": "3.10+",
+      "selenium": "4.27.1+ (essential for SPA JavaScript execution)",
+      "webdriver_manager": "4.0.2+ (Chrome/Chromium automation)",
+      "beautifulsoup4": "HTML parsing (secondary to Selenium for SPAs)",
+      "lxml": "XML processing and document generation",
+      "click": "8.3.0+ CLI framework",
+      "rich": "14.2.0+ enhanced console output",
+      "requests": "HTTP client (limited use due to SPA architecture)"
+    },
+
+    "specialized_libraries": {
+      "usfm_grammar": "3.1.2+ USFM validation",
+      "python_docx": "1.1.2+ Word document generation", 
+      "jsonschema": "4.23.0+ data validation",
+      "pytest": "8.3.5+ testing framework for comprehensive test coverage"
+    }
+  },
+
+  "project_structure": {
+    "src/gundert_portal_scraper/": {
+      "core/": {
+        "purpose": "Book identification, connection management, caching infrastructure",
+        "key_files": [
+          "download_phase.py - SPA-optimized single download with performance metrics",
+          "processing_phase.py - JavaScript-based content extraction from cached SPA DOM", 
+          "gundert_scraper.py - Orchestrates download → processing workflow",
+          "cache.py - RawContentCache for book-level caching with metadata"
+        ]
+      },
+      "extraction/": {
+        "purpose": "Content scraping, metadata extraction, text processing from the cached json",
+        "key_files": [
+          "content_scraper.py - Page-by-page content extraction with line-level preservation",
+          "metadata.py - Content type detection (biblical, linguistic, literary)",
+          "text_processor.py - Text cleaning and Unicode handling"
+        ]
+      },
+      "transformations/plugins/": {
+        "purpose": "Format-specific transformation plugins",
+        "transformers": [
+          "tei_transformer.py - TEI XML with proper manuscript structure and metadata",
+          "docx_transformer.py - Microsoft Word with professional styling and formatting",
+          "parabible_transformer.py - Structured JSON format for API consumption",
+          "usfm_transformer.py - Unified Standard Format Markers for biblical content",
+          "bibleml_transformer.py - BibleML/OSIS format for scripture applications"
+        ]
+      },
+      "storage/": {
+        "purpose": "Data schemas, persistence, format conversion",
+        "schemas.py": "BookStorage, PageContent, BookMetadata Pydantic models"
+      },
+      "validation/": {
+        "purpose": "Content quality assurance and format validation",
+        "validators/": "Format-specific validation (USFM, TEI, etc.)"
+      },
+      "cli/": {
+        "purpose": "Command-line interface with rich console output",
+        "commands.py": "Extract, transform, validate, batch processing commands"
+      }
+    }
+  },
+
+  "critical_implementation_steps": {
+    "1_project_setup": {
+      "create_directory_structure": "Follow src/gundert_portal_scraper/ modular layout",
+      "setup_pyproject_toml": {
+        "dependencies": "selenium, webdriver-manager, click, rich, lxml, python-docx",
+        "dev_dependencies": "pytest, pytest-cov, responses, selenium",
+        "entry_point": "gundert-scraper = gundert_portal_scraper.cli:cli"
+      },
+      "install_chrome": "Required for Selenium WebDriver automation"
+    },
+
+    "2_core_spa_extraction": {
+      "implement_download_phase": {
+        "key_methods": [
+          "download_complete_book() - Single SPA navigation",
+          "_parse_spa_page_structure() - Extract page metadata", 
+          "_detect_spa_architecture() - Identify SPA vs traditional site"
+        ],
+        "performance_tracking": "Measure extraction time, cache hit rates"
+      },
+      "implement_processing_phase": {
+        "key_methods": [
+          "_execute_spa_extraction() - JavaScript execution in browser",
+          "_extract_transcript_from_spa_dom() - CSS selector-based content extraction",
+          "_get_page_specific_content() - Ensure unique content per page"
+        ],
+        "selenium_usage": "WebDriver for JavaScript execution, not just page loading"
+      },
+      "implement_caching": {
+        "raw_content_cache": "Book-level caching with force redownload options",
+        "metadata_validation": "Ensure cache integrity and freshness"
+      }
+    },
+
+    "3_content_transformation": {
+      "base_transformer_framework": {
+        "abstract_methods": "transform(), is_compatible(), validate_input()",
+        "line_mapping": "(Optional) Track source → output line relationships. The transcript contains a line level mapping (seperated by soft enter) with the image",
+        "error_handling": "Graceful degradation with detailed error reporting"
+      },
+      "tei_xml_transformer": {
+        "tei_header": "Proper TEI metadata with language identification",
+        "manuscript_structure": "Page breaks, paragraphs, content structure preservation",
+        "content_preservation": "Unicode handling, historical typography, script-specific formatting"
+      }
+    },
+
+    "4_cli_and_validation": {
+      "cli_implementation": {
+        "extract_command": "URL → formats → output path workflow",
+        "transform_command": "BookStorage → multiple output formats",
+        "validate_command": "Format-specific content validation",
+        "batch_processing": "Multiple books with parallel processing"
+      },
+      "validation_framework": {
+        "format_validators": "USFM, TEI XML, ParaBible JSON validation",
+        "content_specific": "Unicode validation, encoding checks, script-specific patterns",
+        "quality_metrics": "Success rates, content completeness, extraction accuracy"
+      }
+    },
+
+    "5_testing_and_documentation": {
+      "test_coverage": "Implement unit and integration tests",
+      "test_categories": [
+        "SPA extraction accuracy",
+        "Format transformation correctness", 
+        "Vernacular content preservation",
+        "CLI command functionality"
+      ],
+      "documentation": [
+        "README.md - Project overview and quick start",
+        "USER_GUIDE.md - Complete CLI usage",
+        "DEVELOPER_GUIDE.md - Architecture and API",
+        "API_REFERENCE.md - Programmatic interface"
+      ]
+    }
+  },
+
+  "known_issues_and_solutions": {
+    "spa_content_duplication": {
+      "problem": "If we send request to download for each page, scraping returns identical content for all pages",
+      "solution": "Two-phase architecture with JavaScript-based extraction",
+      "prevention": "Always test SPA detection and implement fallback strategies"
+    }
+  },
+
+  "success_metrics": {
+    "content_extraction": {
+      "clean_text_extraction": "Extract the full text content while filtering out page numbers, headers, and navigation elements",
+      "performance_optimization": "Two-phase approach (Download + Processing) should provide measurable performance benefits over page-by-page extraction",
+      "content_accuracy": "Verify unique content per page (no duplicate content across pages)",
+      "structural_preservation": "Maintain document hierarchy, paragraphs, and content organization"
+    },
+    "format_transformation": {
+      "multi_format_success": "Generate valid output in multiple formats (TEI XML, DOCX, JSON)",
+      "format_compliance": "Each output format should meet its respective standards and schemas",
+      "validation_passing": "All generated content should pass format-specific validation",
+      "metadata_preservation": "Source information, page references, and document structure maintained"
+    },
+    "software_quality": {
+      "modular_architecture": "Plugin-based transformation system with clear separation of concerns", 
+      "test_coverage": "Comprehensive test suite with high coverage (target 80%+)",
+      "cli_interface": "Professional command-line tool with progress indicators and rich console output",
+      "error_handling": "Graceful degradation and informative error messages",
+      "documentation": "Complete user and developer documentation"
+    }
+  },
+
+  "recreate_from_scratch_checklist": [
+    {
+      "step": "Environment Setup",
+      "actions": [
+        "Create Python 3.10+ virtual environment",
+        "Install Chrome/Chromium browser",
+        "Set up pyproject.toml with exact dependencies",
+        "Initialize git repository with proper .gitignore"
+      ]
+    },
+    {
+      "step": "Core Infrastructure",
+      "actions": [
+        "Implement modular directory structure",
+        "Create Pydantic schemas (BookStorage, PageContent)",
+        "Build caching system with RawContentCache",
+        "Set up logging and configuration management"
+      ]
+    },
+    {
+      "step": "SPA Extraction Engine", 
+      "actions": [
+        "Implement DownloadPhase with Selenium integration",
+        "Build ProcessingPhase with JavaScript execution",
+        "Create TwoPhaseContentScraper orchestrator",
+        "Add SPA detection and fallback mechanisms"
+      ]
+    },
+    {
+      "step": "Transformation Pipeline",
+      "actions": [
+        "Build BaseTransformer abstract class",
+        "Implement TEI XML transformer (working reference)",
+        "Create DOCX transformer with styling",
+        "Debug and fix USFM transformer compatibility"
+      ]
+    },
+    {
+      "step": "CLI and Validation",
+      "actions": [
+        "Build Click-based CLI with rich console output", 
+        "Implement extract/transform/validate commands",
+        "Create format-specific validators",
+        "Add batch processing capabilities"
+      ]
+    },
+    {
+      "step": "Quality Assurance",
+      "actions": [
+        "Write comprehensive test suite (target 88% coverage)",
+        "Create integration tests with real URLs",
+        "Add performance benchmarks",
+        "Document all APIs and usage patterns"
+      ]
+    }
+  ],
+
+  "immediate_next_steps": [
+    "Verify all format transformations with real extracted data", 
+    "Complete comprehensive documentation (USER_GUIDE.md, DEVELOPER_GUIDE.md)",
+    "Package for PyPI distribution with proper entry points",
+    "Add comprehensive error handling and logging throughout system"
+  ],
+  
+  "sample_books": [
+	{
+		"url": "https://opendigi.ub.uni-tuebingen.de/opendigi/GaXXXIV5a",
+		"type": "Bible",
+		"output": "usfm"
+	},
+	{
+		"url": "https://opendigi.ub.uni-tuebingen.de/opendigi/CiXIV133",
+		"type": "dictionary",
+		"output": "tei"
+	},
+	{
+		"url": "https://opendigi.ub.uni-tuebingen.de/opendigi/GaXXXIV2",
+		"type": "book",
+		"output": "tei, docx"
+	}
+  ],
+
+  "reference_files": [
+    "cache/GaXXXIV5a_transcript.html - downloaded content",
+    "output/psalms_transformed/GaXXXIV5a.xml - Working TEI XML output (79KB Malayalam Psalms)",
+    "src/gundert_portal_scraper/core/download_phase.py - SPA optimization implementation",
+    "src/gundert_portal_scraper/core/processing_phase.py - JavaScript extraction engine", 
+    "src/gundert_portal_scraper/transformations/plugins/tei_transformer.py - Working transformer reference",
+    "README.md - Complete project documentation and architecture overview"
+  ]
+}

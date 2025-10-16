@@ -17,14 +17,55 @@
       "components": {
         "download_phase": {
           "purpose": "Single navigation to SPA website, cache all page structures and metadata",
-          "implementation": "Selenium WebDriver with JavaScript execution to load dynamic content"
+          "implementation": "Selenium WebDriver with JavaScript execution to load dynamic content",
+          "cache_strategy": "Save complete HTML page source to JSON file with metadata timestamp"
         },
         "processing_phase": {
-          "purpose": "Extract real content from cached SPA DOM using JavaScript execution",
-          "key_insight": "Must execute JavaScript in browser context to get actual page-specific content, not server-side scraping",
-          "implementation": "CSS selectors targeting .transcript-text elements with SPA-specific DOM manipulation"
+          "purpose": "Extract real content from cached SPA DOM without browser",
+          "key_insight": "All content is embedded in TEI XML within #transcript-content div. Use BeautifulSoup to parse cached HTML",
+          "implementation": "Parse TEI <surface n='X'> elements for each page, extract text nodes while preserving line structure",
+          "performance": "Once cached, can extract any page range instantly without Selenium"
         }
       }
+    },
+    
+    "json_output_structure": {
+      "purpose": "Structured intermediate format preserving all extracted data",
+      "schema": {
+        "metadata": {
+          "book_id": "Extracted from URL (e.g., GaXXXIV5a)",
+          "url": "Original OpenDigi URL",
+          "title": "Book title extracted from page or book_id",
+          "content_type": "Detected type: bible, dictionary, book, manuscript",
+          "language": "Primary language (e.g., malayalam)",
+          "script": "Writing script (e.g., malayalam, latin)",
+          "total_pages": "Number of pages in manuscript",
+          "extraction_date": "ISO timestamp",
+          "extractor_version": "Version of scraper",
+          "notes": "Any extraction notes or warnings",
+          "extra_metadata": "Additional metadata dictionary"
+        },
+        "pages": [
+          {
+            "page_number": "Sequential page number",
+            "image_url": "URL to scanned page image (critical for page-text alignment)",
+            "lines": "Array of text lines preserving line breaks from transcript",
+            "full_text": "Complete page text with newlines",
+            "has_heading": "Boolean - detected heading on page",
+            "has_verse_numbers": "Boolean - detected verse numbering",
+            "confidence": "Float 0-1 extraction confidence score",
+            "notes": "Array of extraction notes/warnings"
+          }
+        ],
+        "statistics": {
+          "total_lines_extracted": "Total lines across all pages",
+          "total_characters": "Total character count",
+          "pages_with_content": "Number of pages with non-empty content",
+          "extraction_errors": "Number of errors encountered",
+          "success_rate": "Percentage of successful extractions"
+        }
+      },
+      "design_rationale": "This structure enables: (1) Page-to-image mapping for verification, (2) Line-level preservation for accurate formatting, (3) Metadata for downstream transformations, (4) Quality metrics for validation"
     },
 
     "spa_content_extraction_strategy": {
@@ -44,7 +85,7 @@
         "DOCX",
         "ParaBible JSON",
 		"USFM"
-      ],
+      ]
     }
   },
 
@@ -116,7 +157,7 @@
     "1_project_setup": {
       "create_directory_structure": "Follow src/gundert_portal_scraper/ modular layout",
       "setup_pyproject_toml": {
-        "dependencies": "selenium, webdriver-manager, click, rich, lxml, python-docx",
+        "dependencies": "selenium, webdriver-manager, click, rich, lxml, python-docx, beautifulsoup4, pydantic",
         "dev_dependencies": "pytest, pytest-cov, responses, selenium",
         "entry_point": "gundert-scraper = gundert_portal_scraper.cli:cli"
       },
@@ -124,29 +165,66 @@
     },
 
     "2_core_spa_extraction": {
-      "implement_download_phase": {
-        "key_methods": [
-          "download_complete_book() - Single SPA navigation",
-          "_parse_spa_page_structure() - Extract page metadata", 
-          "_detect_spa_architecture() - Identify SPA vs traditional site"
+      "implement_cache_system": {
+        "file": "src/gundert_portal_scraper/core/cache.py",
+        "class": "RawContentCache",
+        "methods": [
+          "save(book_id, content, metadata) - Save HTML to JSON cache",
+          "load(book_id) - Load cached content",
+          "is_cached(book_id) - Check if book is cached",
+          "clear(book_id) - Clear specific cache"
         ],
-        "performance_tracking": "Measure extraction time, cache hit rates"
+        "cache_format": "JSON file with content, metadata, cached_at timestamp"
       },
-      "implement_processing_phase": {
-        "key_methods": [
-          "_execute_spa_extraction() - JavaScript execution in browser",
-          "_extract_transcript_from_spa_dom() - CSS selector-based content extraction",
-          "_get_page_specific_content() - Ensure unique content per page"
+      "implement_two_phase_scraper": {
+        "file": "src/gundert_portal_scraper/extraction/two_phase_scraper.py",
+        "class": "TwoPhaseContentScraper",
+        "download_phase_logic": [
+          "1. Check if book_id is cached, return cached if available",
+          "2. If not cached: Connect Selenium to OpenDigi URL",
+          "3. Wait for page load (3-5 seconds for SPA initialization)",
+          "4. Extract driver.page_source (contains full embedded TEI XML)",
+          "5. Save to cache with metadata",
+          "6. Return cached content"
         ],
-        "selenium_usage": "WebDriver for JavaScript execution, not just page loading"
+        "processing_phase_logic": [
+          "1. Parse cached HTML with BeautifulSoup",
+          "2. Find div#transcript-content containing TEI XML",
+          "3. Find all <surface n='X'> elements (each = one page)",
+          "4. For each requested page number:",
+          "   a. Find surface with matching n attribute",
+          "   b. Extract all text nodes (preserving structure)",
+          "   c. Clean and split into lines",
+          "   d. Detect verse numbers and headings",
+          "   e. Create PageContent object",
+          "5. Return BookStorage with all pages"
+        ]
       },
-      "implement_caching": {
-        "raw_content_cache": "Book-level caching with force redownload options",
-        "metadata_validation": "Ensure cache integrity and freshness"
+      "key_opendigi_structure": {
+        "html_structure": "<div id='transcript-content'><tei><sourcedoc><surface n='1'>...</surface><surface n='2'>...</surface>...",
+        "page_identification": "Each <surface n='X'> element represents one manuscript page",
+        "text_extraction": "Use TreeWalker or descendants to get all text nodes",
+        "critical_insight": "All 200+ pages are embedded in single HTML response - no need for page-by-page requests"
       }
     },
 
-    "3_content_transformation": {
+    "3_data_models": {
+      "pydantic_schemas": {
+        "file": "src/gundert_portal_scraper/storage/schemas.py",
+        "models": [
+          "BookMetadata - book_id, url, title, content_type, language, script, total_pages, etc.",
+          "PageContent - page_number, image_url, lines (list), full_text, has_heading, has_verse_numbers, confidence, notes",
+          "BookStorage - metadata (BookMetadata), pages (list[PageContent]), statistics (dict)"
+        ],
+        "methods": [
+          "BookStorage.to_json(filepath) - Save to JSON file",
+          "BookStorage.from_json(filepath) - Load from JSON file",
+          "BookStorage.update_statistics() - Calculate statistics from pages"
+        ]
+      }
+    },
+
+    "4_content_transformation": {
       "base_transformer_framework": {
         "abstract_methods": "transform(), is_compatible(), validate_input()",
         "line_mapping": "(Optional) Track source → output line relationships. The transcript contains a line level mapping (seperated by soft enter) with the image",
@@ -221,6 +299,197 @@
   },
 
   "recreate_from_scratch_checklist": [
+    {
+      "step": "Environment Setup",
+      "actions": [
+        "Create Python 3.10+ virtual environment",
+        "Install Chrome/Chromium browser",
+        "Set up pyproject.toml with exact dependencies",
+        "Initialize git repository with proper .gitignore"
+      ]
+    },
+    {
+      "step": "Core Infrastructure",
+      "actions": [
+        "Implement modular directory structure",
+        "Create Pydantic schemas (BookStorage, PageContent)",
+        "Build caching system with RawContentCache",
+        "Set up logging and configuration management"
+      ]
+    },
+    {
+      "step": "SPA Extraction Engine", 
+      "actions": [
+        "Implement DownloadPhase with Selenium integration",
+        "Build ProcessingPhase with JavaScript execution",
+        "Create TwoPhaseContentScraper orchestrator",
+        "Add SPA detection and fallback mechanisms"
+      ]
+    },
+    {
+      "step": "Transformation Pipeline",
+      "actions": [
+        "Build BaseTransformer abstract class",
+        "Implement TEI XML transformer (working reference)",
+        "Create DOCX transformer with styling",
+        "Debug and fix USFM transformer compatibility"
+      ]
+    },
+    {
+      "step": "CLI and Validation",
+      "actions": [
+        "Build Click-based CLI with rich console output", 
+        "Implement extract/transform/validate commands",
+        "Create format-specific validators",
+        "Add batch processing capabilities"
+      ]
+    },
+    {
+      "step": "Quality Assurance",
+      "actions": [
+        "Write comprehensive test suite (target 88% coverage)",
+        "Create integration tests with real URLs",
+        "Add performance benchmarks",
+        "Document all APIs and usage patterns"
+      ]
+    }
+  ],
+  
+  "llm_recreation_instructions": {
+    "purpose": "Complete instructions for an LLM to recreate this scraper from scratch",
+    "prerequisites": [
+      "Python 3.10+ environment",
+      "Chrome/Chromium browser installed",
+      "Basic understanding of Selenium and BeautifulSoup"
+    ],
+    "step_by_step_guide": {
+      "step_1_analyze_target": {
+        "instruction": "Navigate to https://opendigi.ub.uni-tuebingen.de/opendigi/GaXXXIV5a in browser DevTools",
+        "what_to_find": [
+          "Open DevTools → Elements → Find <div id='transcript-content'>",
+          "Notice it contains <tei><sourcedoc> with multiple <surface n='X'> elements",
+          "Each surface represents one page, identified by n attribute",
+          "All 200+ pages are embedded in the initial HTML (SPA architecture)",
+          "Conclusion: Download once, parse locally - no need for page-by-page requests"
+        ]
+      },
+      "step_2_setup_project": {
+        "instruction": "Create Python project with modular structure",
+        "directory_structure": [
+          "src/gundert_portal_scraper/",
+          "  core/ - cache.py, book_identifier.py, connector.py",
+          "  extraction/ - two_phase_scraper.py",
+          "  storage/ - schemas.py",
+          "  cli/ - commands.py",
+          "cache/ - for cached content",
+          "output/ - for extracted data"
+        ],
+        "dependencies": "selenium, webdriver-manager, beautifulsoup4, pydantic, click, rich, lxml"
+      },
+      "step_3_implement_cache": {
+        "file": "core/cache.py",
+        "class": "RawContentCache",
+        "purpose": "Save downloaded HTML to avoid repeated browser connections",
+        "methods": {
+          "save": "Save HTML string + metadata to JSON file named {book_id}_content.json",
+          "load": "Load and return cached content dictionary",
+          "is_cached": "Check if cache file exists",
+          "get_cache_path": "Return Path object for cache file"
+        }
+      },
+      "step_4_implement_connector": {
+        "file": "core/connector.py",
+        "class": "GundertPortalConnector",
+        "purpose": "Manage Selenium WebDriver connection",
+        "key_code": [
+          "Use webdriver_manager.chrome.ChromeDriverManager for automatic driver setup",
+          "Configure headless mode, no-sandbox, disable-dev-shm-usage",
+          "navigate_to_book(page_num): Load URL with optional page parameter",
+          "get_page_source(): Return driver.page_source containing all embedded content",
+          "execute_script(script): Execute JavaScript if needed",
+          "close(): Cleanup driver"
+        ]
+      },
+      "step_5_implement_schemas": {
+        "file": "storage/schemas.py",
+        "models": [
+          "BookMetadata: book_id, url, title, content_type, language, script, total_pages, extraction_date, extractor_version",
+          "PageContent: page_number, image_url (CRITICAL!), lines (list[str]), full_text, has_heading, has_verse_numbers, confidence, notes",
+          "BookStorage: metadata (BookMetadata), pages (list[PageContent]), statistics (dict) with methods to_json() and from_json()"
+        ],
+        "image_url_field": {
+          "field_name": "image_url",
+          "field_type": "Optional[str]",
+          "purpose": "Links extracted text to source manuscript image for verification and citation",
+          "example": "https://opendigi.ub.uni-tuebingen.de/opendigi/image/GaXXXIV5a/GaXXXIV5a_007.jp2/full/full/0/default.jpg",
+          "critical_note": "This field enables page-to-image alignment which is essential for academic work and quality validation"
+        }
+      },
+      "step_6_implement_two_phase_scraper": {
+        "file": "extraction/two_phase_scraper.py",
+        "class": "TwoPhaseContentScraper",
+        "download_phase": [
+          "Check cache.is_cached(book_id)",
+          "If cached: return cache.load(book_id)",
+          "If not: connector.navigate_to_book(), sleep(3), get page_source",
+          "Save to cache, return content"
+        ],
+        "processing_phase": [
+          "Parse HTML with BeautifulSoup(html, 'html.parser')",
+          "Find transcript_div = soup.find('div', id='transcript-content')",
+          "Get all surfaces = transcript_div.find_all('surface')",
+          "For each requested page_number:",
+          "  - Find surface with n=str(page_number)",
+          "  - Extract text: for element in surface.descendants: if element.name is None: lines.append(element.strip())",
+          "  - Generate image URL using _generate_image_url(page_number)",
+          "  - Clean lines, detect verse numbers, create PageContent with image_url",
+          "Return BookStorage with all pages"
+        ],
+        "image_url_generation": {
+          "critical_importance": "Image URLs enable page-to-text alignment, verification, and academic citation",
+          "opendigi_pattern": "OpenDigi uses IIIF Image API with consistent URL structure",
+          "url_format": "https://opendigi.ub.uni-tuebingen.de/opendigi/image/{book_id}/{book_id}_{page:03d}.jp2/full/full/0/default.jpg",
+          "implementation": [
+            "Create method _generate_image_url(page_number: int) -> str",
+            "Format: f'https://opendigi.ub.uni-tuebingen.de/opendigi/image/{self.book_id}/{self.book_id}_{page_number:03d}.jp2/full/full/0/default.jpg'",
+            "Note: Page numbers are zero-padded to 3 digits (001, 002, 010, 150, etc.)",
+            "Example: GaXXXIV5a page 7 → GaXXXIV5a_007.jp2/full/full/0/default.jpg"
+          ],
+          "verification": "Test URLs with curl -I to ensure HTTP 200 response",
+          "page_content_field": "Include image_url in PageContent model and populate for every page"
+        }
+      },
+      "step_7_implement_cli": {
+        "file": "cli/commands.py",
+        "framework": "Click for CLI, Rich for styled output",
+        "extract_command": [
+          "Arguments: url, --output, --formats, --start-page, --end-page, --headless",
+          "Flow: BookIdentifier(url) → GundertPortalConnector → TwoPhaseContentScraper → BookStorage → save JSON",
+          "Display statistics table with Rich"
+        ]
+      }
+    },
+    "testing_instructions": [
+      "Test with: gundert-scraper extract https://opendigi.ub.uni-tuebingen.de/opendigi/GaXXXIV5a --start-page 7 --end-page 7",
+      "Verify cache created in ./cache/GaXXXIV5a_content.json (~771KB)",
+      "Run again with different page range - should use cache (instant)",
+      "Check output JSON structure matches schema",
+      "Verify image_url field is present in all pages",
+      "Test image URL accessibility: curl -I <image_url> should return HTTP 200",
+      "Confirm page number padding: page 7 → _007.jp2, page 150 → _150.jp2"
+    ],
+    "common_pitfalls": [
+      "Not waiting long enough for SPA to load (use sleep 3-5 seconds)",
+      "Trying to extract text with CSS selectors instead of parsing TEI structure",
+      "Not preserving line breaks - use TreeWalker or descendants iteration",
+      "Forgetting to extract image URLs for page-to-image mapping",
+      "Incorrect image URL padding - must be zero-padded to 3 digits (007 not 7)",
+      "Not validating image URLs - test with curl to ensure accessibility",
+      "Hardcoding image URLs instead of generating them programmatically"
+    ]
+  },
+
+  "recreate_from_scratch_checklist_old": [
     {
       "step": "Environment Setup",
       "actions": [

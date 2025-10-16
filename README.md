@@ -1,83 +1,77 @@
 # Gundert Portal Scraper 🏛️
 
-> **Universal Digital Manuscript Extractor for Historical Collections**
+> **Digital Manuscript Extractor for OpenDigi Historical Collections**
 
-A comprehensive, production-ready tool for extracting, transforming, and validating content from the Gundert Portal and OpenDigi digital manuscript collections. Works with **multiple Indian languages** and **diverse content types** including linguistic studies, religious texts, literary works, cultural documents, and scholarly manuscripts. Built with academic rigor and modern software engineering practices.
+A production-ready tool for extracting content from OpenDigi digital manuscript collections using a two-phase architecture. Specializes in Malayalam biblical texts and historical manuscripts with line-level preservation and image URL generation.
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Code Coverage](https://img.shields.io/badge/coverage-88%25-brightgreen.svg)](https://github.com/beniza/gundert-portal-scraper)
 
 ## 🌟 Features
 
-### **Universal Content Extraction**
-- 🔍 **Multi-Portal Support**: Works with Gundert Portal and OpenDigi collections
-- 🌍 **Multi-Language Support**: Handles Malayalam, Sanskrit, Tamil, and other Indian languages
-- � **Diverse Content Types**: Biblical texts, linguistic studies, literary works, cultural documents
-- �📜 **Historical Manuscript Processing**: Specialized for 19th-century digitized manuscripts
-- 🎯 **Intelligent Content Detection**: Automatically identifies text regions in multiple scripts
-- 📊 **Line-Level Preservation**: Maintains exact manuscript formatting and structure
+### **Two-Phase Extraction Architecture**
+- 📥 **Phase 1: Download** - Fetch entire manuscript once using Selenium
+- ⚡ **Phase 2: Process** - Extract content from cached data using BeautifulSoup
+- 💾 **Smart Caching** - Cache downloaded content (771KB for 201 pages)
+- � **Performance** - Reduces extraction time from 10s to 2s per page
 
-### **Professional Transformation Pipeline**
-- 📝 **5 Output Formats**: USFM, TEI XML, ParaBible JSON, BibleML/OSIS, Microsoft Word DOCX
-- 🔄 **Plugin Architecture**: Extensible transformation system
-- 📋 **Academic Standards**: TEI XML compliance for digital humanities
-- 💼 **Publication Ready**: Professional DOCX output with proper styling
+### **Content Extraction**
+- 🔍 **OpenDigi Support** - Works with University of Tübingen's OpenDigi platform
+- 🌍 **Multi-Language Support** - Handles Malayalam, Sanskrit, Tamil, and other Indian languages
+- 📜 **TEI XML Parsing** - Extracts embedded TEI content from SPA architecture
+- 📊 **Line-Level Preservation** - Maintains exact manuscript formatting
+- 🖼️ **Image URL Generation** - IIIF API URLs for page-to-image alignment
 
-### **Comprehensive Quality Assurance**
-- ✅ **Multi-Format Validation**: Built-in validators for all output formats
-- 🧪 **Test-Driven Development**: 28+ tests with 88% code coverage
-- 🔍 **Malayalam-Specific Checks**: Unicode validation and encoding verification
-- 📈 **Quality Metrics**: Detailed reports on extraction success and content quality
+### **Professional Output**
+- 📝 **JSON Structure** - Clean, hierarchical data with page/line organization
+- � **Statistics** - Automatic calculation of success rates and extraction metrics
+- ✅ **100% Success Rate** - Validated on Malayalam Psalms (GaXXXIV5a)
 
 ### **User-Friendly Interface**
-- 🖥️ **Professional CLI**: Rich console interface with progress indicators
-- 🚀 **Simple Commands**: Extract, transform, validate, and batch process
-- 📚 **Comprehensive Help**: Built-in documentation and examples
-- 🔧 **Flexible Configuration**: Customizable extraction and transformation options
+- 🖥️ **CLI with Rich Output** - Professional console interface with progress indicators
+- � **Flexible Options** - Page range selection, custom output paths
+- 📚 **Comprehensive Documentation** - Includes LLM recreation guide
 
 ## 🚀 Quick Start
 
 ### Installation
 ```bash
-# Using uv (recommended)
-git clone https://github.com/beniza/gundert-portal-scraper.git
-cd gundert-portal-scraper
+# Clone and setup
+git clone <your-repo-url>
+cd gundert-bible
 uv sync
-
-# Using pip
-pip install gundert-portal-scraper  # Coming soon to PyPI
 ```
 
 ### Basic Usage
 ```bash
-# Extract content from Gundert Portal manuscripts
-gundert-scraper extract https://opendigi.ub.uni-tuebingen.de/opendigi/GaXXXIV5_1 \
-  --formats usfm,docx --output ./extracted
+# Extract content from OpenDigi manuscripts (e.g., Malayalam Psalms)
+uv run gundert-scraper extract https://opendigi.ub.uni-tuebingen.de/opendigi/GaXXXIV5a
 
-# Validate generated content
-gundert-scraper validate extracted/*.usfm --detailed
-
-# Transform existing data to different formats
-gundert-scraper transform book_data.json --formats tei_xml,bibleml
-
-# Batch process multiple books
-gundert-scraper batch *.json --formats usfm,docx --parallel 3
+# Extract specific page range
+uv run gundert-scraper extract https://opendigi.ub.uni-tuebingen.de/opendigi/GaXXXIV5a \
+  --start-page 1 --end-page 20 --output ./output/psalms_sample
 ```
 
-### Programmatic Usage
-```python
-from gundert_portal_scraper import BookIdentifier, GundertPortalConnector, ContentScraper
+### Example Output
+The scraper extracts content with line-level preservation and includes image URLs for page-to-text alignment:
 
-# Extract content programmatically
-book_id = BookIdentifier("https://opendigi.ub.uni-tuebingen.de/opendigi/GaXXXIV5_1")
-
-with GundertPortalConnector(book_id, use_selenium=True) as connector:
-    scraper = ContentScraper(connector, preserve_formatting=True)
-    book_data = scraper.scrape_full_book(start_page=1, end_page=10)
-    
-    print(f"Extracted {book_data['statistics']['total_lines_extracted']} lines")
-    print(f"Success rate: {book_data['statistics']['success_rate']:.1f}%")
+```json
+{
+  "book_id": "GaXXXIV5a",
+  "metadata": {
+    "title": "Malayalam Psalms",
+    "total_pages": 201
+  },
+  "pages": [
+    {
+      "page_number": 1,
+      "image_url": "https://opendigi.ub.uni-tuebingen.de/iiif/2/opendigi~gundert~GaXXXIV5a~GaXXXIV5a_001.jp2/full/full/0/default.jpg",
+      "lines": [
+        {"line_number": 1, "text": "സങ്കീർത്തനങ്ങൾ"},
+        {"line_number": 2, "text": "ഒന്നാം സങ്കീർത്തനം"}
+      ]
+    }
+  ]
+}
 ```
 
 ## 📚 Documentation
@@ -93,85 +87,88 @@ with GundertPortalConnector(book_id, use_selenium=True) as connector:
 ### Modular Design
 ```
 src/gundert_portal_scraper/
-├── core/           # Connection and book identification
-├── extraction/     # Content and metadata scraping
-├── storage/        # Data persistence and schemas
-├── transformations/# Format conversion plugins
-├── validation/     # Content quality assurance
-├── cli/           # Command-line interface
-└── preview/       # Content preview and sampling
+├── core/
+│   ├── book_identifier.py  # URL parsing and book ID extraction
+│   ├── connector.py         # Selenium WebDriver management
+│   └── cache.py            # Content caching system
+├── extraction/
+│   └── two_phase_scraper.py # Two-phase extraction logic
+├── storage/
+│   └── schemas.py          # Pydantic data models
+└── cli/
+    └── commands.py         # Command-line interface
 ```
 
-### Supported Formats
-| Format | Extension | Description | Use Case |
-|--------|-----------|-------------|----------|
-| **USFM** | `.usfm` | Unified Standard Format Marker | Bible translation projects |
-| **TEI XML** | `.xml` | Text Encoding Initiative | Digital humanities research |
-| **ParaBible JSON** | `.json` | Structured verse data | Data analysis and APIs |
-| **BibleML/OSIS** | `.xml` | Biblical markup standard | Scripture publishing |
-| **DOCX** | `.docx` | Microsoft Word document | Publication and sharing |
+### Two-Phase Architecture
+1. **Download Phase**: Selenium navigates to OpenDigi SPA, fetches entire manuscript
+2. **Cache Storage**: Content saved as JSON (771KB for 201-page manuscript)
+3. **Processing Phase**: BeautifulSoup extracts TEI XML from cached content
+4. **Output Generation**: Structured JSON with line-level preservation
+
+### Current Status
+✅ **Completed**: Core extraction with caching, image URL generation, CLI  
+⏳ **In Progress**: USFM transformer for Bible texts  
+📋 **Planned**: TEI XML transformer, DOCX output, batch processing
 
 ## 🎯 Use Cases
 
-### **Digital Humanities Research**
-- Extract and analyze historical manuscripts in multiple Indian languages
-- Generate TEI XML for scholarly digital editions
-- Preserve historical text formatting and structure
-- Support comparative textual analysis
-
 ### **Bible Translation Projects**
-- Convert historical texts to modern USFM format
+- Extract Malayalam biblical texts from historical manuscripts
+- Convert to modern USFM format for translation tools
 - Maintain verse numbering and chapter structure
-- Generate publication-ready Word documents
-- Validate content against biblical standards
+- Generate publication-ready outputs
+
+### **Digital Humanities Research**
+- Process 19th-century digitized manuscripts
+- Preserve historical text formatting and pagination
+- Support comparative textual analysis
+- Generate TEI XML for scholarly editions
 
 ### **Language Preservation**
-- Digitize 19th-century Malayalam typography
-- Preserve Unicode text with proper encoding
+- Digitize Malayalam typography with Unicode encoding
 - Document historical spelling variations
 - Support linguistic analysis and research
-
-### **Academic Publishing**
-- Generate properly formatted academic outputs
-- Maintain scholarly metadata and provenance
-- Support citation and referencing standards
-- Enable collaborative research workflows
+- Enable searchable digital archives
 
 ## 🔧 Requirements
 
 - **Python 3.10+**
 - **Chrome/Chromium** (for Selenium-based extraction)
-- **Dependencies**: Automatically managed via `uv` or `pip`
+- **Dependencies**: Automatically managed via `uv sync`
 
-### Optional Dependencies
-- `usfm-grammar` - Enhanced USFM validation
-- `lxml` - Advanced XML processing
-- `python-docx` - Word document generation
+### Key Dependencies
+- `selenium` 4.27.1 - WebDriver for SPA navigation
+- `beautifulsoup4` - TEI XML parsing
+- `pydantic` 2.0+ - Data validation
+- `click` 8.3+ - CLI framework
+- `rich` 14.2+ - Terminal formatting
+
+## 📚 Documentation
+
+- **[project_reconstruction_guide.json](project_reconstruction_guide.json)** - Complete LLM recreation instructions
+- **[IMPLEMENTATION_SUMMARY.md](IMPLEMENTATION_SUMMARY.md)** - Technical implementation details
+- **Cache Directory**: `./cache/` - Downloaded manuscript content
+- **Output Directory**: `./output/` - Extracted JSON files
 
 ## 🤝 Contributing
 
-We welcome contributions! See [DEVELOPER_GUIDE.md](docs/DEVELOPER_GUIDE.md) for:
-- Development setup and guidelines
-- Architecture overview and design principles
-- Testing requirements and coverage standards
-- Code style and documentation standards
+Contributions welcome! Key areas for improvement:
+- USFM transformer implementation
+- TEI XML output format
+- DOCX generation
+- Batch processing capabilities
+- Additional validation tests
 
 ## 📄 License
 
-MIT License - see [LICENSE](LICENSE) file for details.
+MIT License - Free to use for academic and commercial purposes.
 
 ## 🙏 Acknowledgments
 
-- **Hermann Gundert** - 19th-century scholar and Malayalam linguist
-- **University of Tübingen** - OpenDigi digital manuscript collection
-- **Malayalam Digital Humanities** - Preserving historical texts for future generations
-
-## 📞 Support
-
-- **Issues**: [GitHub Issues](https://github.com/beniza/gundert-portal-scraper/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/beniza/gundert-portal-scraper/discussions)
-- **Documentation**: [Project Wiki](https://github.com/beniza/gundert-portal-scraper/wiki)
+- **Hermann Gundert** - 19th-century Malayalam linguist and scholar
+- **University of Tübingen** - OpenDigi digital manuscript platform
+- **Malayalam Digital Preservation** - Preserving historical texts
 
 ---
 
-**Made with ❤️ for Malayalam digital preservation and biblical studies**
+**Built for Malayalam biblical text preservation and digital humanities research**
