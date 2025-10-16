@@ -96,6 +96,61 @@
         "ParaBible JSON",
 		"USFM"
       ]
+    },
+
+    "output_management_system": {
+      "rationale": "Distinguish between final deliverables and intermediate processing files for efficient disk space management",
+      "output_types": {
+        "final_outputs": {
+          "definition": "Primary deliverables - the very purpose of the process",
+          "examples": ["USFM files", "TEI XML files", "DOCX documents", "PDF publications"],
+          "storage": "output/final/<format>/",
+          "lifetime": "NEVER auto-deleted - these are the end products",
+          "protection": "Same level of protection as cache files"
+        },
+        "interim_outputs": {
+          "definition": "Intermediate files that facilitate production of final outputs",
+          "examples": ["Extracted JSON when transforming to USFM", "Temporary processing files", "Processing logs"],
+          "storage": "output/interim/<format>/",
+          "lifetime": "Can be cleaned up after transformation complete",
+          "cleanup_options": "Optional via --keep-interim or --clean-interim flags"
+        },
+        "cache": {
+          "definition": "Downloaded manuscript content",
+          "storage": "cache/",
+          "lifetime": "NEVER deleted - completely separate from output management",
+          "reference": "See cache_management_rules in two_phase_extraction_architecture"
+        }
+      },
+      "implementation": {
+        "class": "OutputManager in storage/output_manager.py",
+        "features": [
+          "Automatic organization into final/ and interim/ directories",
+          "Manifest tracking via .output_manifest.json",
+          "Statistics (file counts, sizes, space usage)",
+          "Safe cleanup operations (only interim files)",
+          "File registration with metadata"
+        ],
+        "cli_integration": [
+          "extract --keep-interim: Preserve interim files for debugging",
+          "extract --clean-interim: Auto-cleanup interim files for production",
+          "cleanup command: Manual cleanup with confirmation",
+          "cleanup --force: Non-interactive cleanup"
+        ]
+      },
+      "safety_guarantees": [
+        "Final outputs NEVER auto-deleted",
+        "Cache NEVER touched by output management",
+        "Interim files only deleted when explicitly requested",
+        "Manifest tracking prevents accidental data loss",
+        "Cleanup operations are reversible via backup"
+      ],
+      "use_cases": {
+        "development": "Use --keep-interim to inspect all intermediate files",
+        "production": "Use --clean-interim to minimize disk usage",
+        "batch_processing": "Use cleanup command after processing multiple books",
+        "debugging": "Retain interim files to troubleshoot transformation issues"
+      }
     }
   },
 
@@ -149,8 +204,9 @@
         ]
       },
       "storage/": {
-        "purpose": "Data schemas, persistence, format conversion",
-        "schemas.py": "BookStorage, PageContent, BookMetadata Pydantic models"
+        "purpose": "Data schemas, persistence, format conversion, output management",
+        "schemas.py": "BookStorage, PageContent, BookMetadata Pydantic models",
+        "output_manager.py": "OutputManager for organizing final vs interim outputs with cleanup"
       },
       "validation/": {
         "purpose": "Content quality assurance and format validation",
@@ -244,7 +300,47 @@
       }
     },
 
-    "4_content_transformation": {
+    "4_output_management": {
+      "implement_output_manager": {
+        "file": "src/gundert_portal_scraper/storage/output_manager.py",
+        "class": "OutputManager",
+        "critical_concept": "Distinguish between FINAL outputs (deliverables) and INTERIM outputs (temporary processing files)",
+        "output_types": {
+          "FINAL": "Deliverable files - NEVER deleted automatically (e.g., USFM, TEI XML, DOCX)",
+          "INTERIM": "Temporary processing files - CAN be cleaned up (e.g., extracted JSON, debug dumps)",
+          "CACHE": "Downloaded manuscripts - NEVER touched by output management"
+        },
+        "methods": [
+          "register_file(file_path, output_type, description, metadata) - Track output files",
+          "get_output_path(output_type, relative_path) - Get properly organized path",
+          "cleanup_interim() - Remove interim files only, preserve final and cache",
+          "get_statistics() - Show counts and sizes by output type",
+          "get_manifest() - Return all tracked files"
+        ],
+        "directory_structure": {
+          "output/final/": "Final deliverable files",
+          "output/interim/": "Temporary processing files",
+          "cache/": "Downloaded manuscripts (managed by RawContentCache)"
+        },
+        "manifest_tracking": ".output_manifest.json - Track all outputs with metadata",
+        "safety_requirements": [
+          "Final outputs NEVER deleted automatically",
+          "Cache NEVER touched by output management",
+          "Interim cleanup only when explicitly requested",
+          "Manifest persists to track file history"
+        ]
+      },
+      "cli_integration": {
+        "extract_command_flags": [
+          "--keep-interim - Keep interim files for debugging (development mode)",
+          "--clean-interim - Remove interim files after final output (production mode, default)"
+        ],
+        "cleanup_command": "Manual command to remove interim files: gundert-scraper cleanup --interim",
+        "statistics_display": "Show output counts and sizes by type in CLI tables"
+      }
+    },
+
+    "5_content_transformation": {
       "base_transformer_framework": {
         "abstract_methods": "transform(), is_compatible(), validate_input()",
         "line_mapping": "(Optional) Track source → output line relationships. The transcript contains a line level mapping (seperated by soft enter) with the image",
@@ -257,7 +353,7 @@
       }
     },
 
-    "4_cli_and_validation": {
+    "6_cli_and_validation": {
       "cli_implementation": {
         "extract_command": "URL → formats → output path workflow",
         "transform_command": "BookStorage → multiple output formats",
@@ -271,7 +367,7 @@
       }
     },
 
-    "5_testing_and_documentation": {
+    "7_testing_and_documentation": {
       "test_coverage": "Implement unit and integration tests",
       "test_categories": [
         "SPA extraction accuracy",
