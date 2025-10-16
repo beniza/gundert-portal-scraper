@@ -9,6 +9,7 @@ import json
 from ..core.book_identifier import BookIdentifier
 from ..core.connector import GundertPortalConnector
 from ..extraction.two_phase_scraper import TwoPhaseContentScraper
+from ..transformations.usfm_transformer import USFMTransformer
 
 console = Console()
 
@@ -116,6 +117,59 @@ def _display_statistics(book_data):
     
     console.print(table)
     console.print()
+
+
+@cli.command()
+@click.argument('json_file', type=click.Path(exists=True))
+@click.option('--output', '-o', help='Output file path')
+@click.option('--format', '-f', type=click.Choice(['usfm', 'tei', 'docx']), default='usfm', help='Output format')
+def transform(json_file, output, format):
+    """
+    Transform extracted JSON to specified format.
+    
+    Example:
+        gundert-scraper transform output/GaXXXIV5a.json --format usfm --output output/psalms.usfm
+    """
+    console.print(f"\n[bold blue]🔄 Transforming Content[/bold blue]")
+    console.print(f"[dim]Input: {json_file}[/dim]")
+    console.print(f"[dim]Format: {format}[/dim]\n")
+    
+    try:
+        json_path = Path(json_file)
+        
+        # Determine output path
+        if not output:
+            output = json_path.with_suffix(f'.{format}')
+        output_path = Path(output)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        
+        if format == 'usfm':
+            with console.status("[bold green]Transforming to USFM..."):
+                transformer = USFMTransformer()
+                usfm_content = transformer.transform(str(json_path), str(output_path))
+            
+            console.print(f"✅ USFM file generated: [cyan]{output_path}[/cyan]")
+            console.print(f"   Total characters: {len(usfm_content):,}")
+            
+            # Count chapters and verses
+            chapters = usfm_content.count('\\c ')
+            verses = usfm_content.count('\\v ')
+            console.print(f"   Chapters: {chapters}")
+            console.print(f"   Verses: {verses}")
+        
+        elif format == 'tei':
+            console.print("⚠️  TEI transformation not yet implemented")
+        
+        elif format == 'docx':
+            console.print("⚠️  DOCX transformation not yet implemented")
+        
+        console.print(f"\n[bold green]✅ Transformation complete![/bold green]")
+    
+    except Exception as e:
+        console.print(f"[bold red]❌ Error:[/bold red] {e}")
+        import traceback
+        console.print(f"[dim]{traceback.format_exc()}[/dim]")
+        raise click.Abort()
 
 
 if __name__ == '__main__':
