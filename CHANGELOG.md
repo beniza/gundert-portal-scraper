@@ -2,7 +2,28 @@
 
 All notable changes to the Gundert Portal Scraper project.
 
-## [0.1.0] - 2025-01-16
+# Changelog
+
+All notable changes to the Gundert Portal Scraper project will be documented in this file.
+
+## [0.2.0] - 2025-10-16
+
+### Added
+- **USFM Transformer** - Convert extracted JSON to USFM format for Bible translation projects
+  - Malayalam digit support (൧, ൨, ൩ → 1, 2, 3)
+  - Automatic verse and psalm detection
+  - Page header filtering
+  - Multi-line verse handling
+  - Descriptive title preservation
+- **Transform CLI Command** - `gundert-scraper transform` for format conversion
+- **USFM Documentation** - Complete guide in `docs/USFM_TRANSFORMER.md`
+
+### Testing
+- Successfully transformed Psalms 1-10 (156 verses)
+- Validated USFM 3.0 marker compliance
+- Tested Malayalam Unicode preservation
+
+## [0.1.0] - 2025-10-16
 
 ### Added
 - Two-phase extraction architecture (download → process)
