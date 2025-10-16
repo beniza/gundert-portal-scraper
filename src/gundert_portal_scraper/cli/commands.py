@@ -8,8 +8,10 @@ import json
 
 from ..core.book_identifier import BookIdentifier
 from ..core.connector import GundertPortalConnector
+from ..core.cache import RawContentCache
 from ..extraction.two_phase_scraper import TwoPhaseContentScraper
 from ..transformations.usfm_transformer import USFMTransformer
+from ..transformations.tei_transformer import TEITransformer
 from ..storage.output_manager import OutputManager, OutputType
 
 console = Console()
@@ -124,7 +126,44 @@ def extract(url, output, formats, start_page, end_page, headless, validate, keep
                 
                 console.print(f"📝 Saved USFM: [cyan]{usfm_path.relative_to(output_path)}[/cyan]")
             elif fmt == 'tei':
-                console.print(f"⚠️  TEI transformation not yet implemented")
+                tei_path = output_manager.get_final_path('tei', f"{book_id.book_id}.xml")
+                transformer = TEITransformer()
+                
+                # Load cached content for TEI transformation
+                cache = RawContentCache()
+                cached_content = cache.load(book_id.book_id)
+                
+                if not cached_content:
+                    console.print(f"[bold red]❌ Error:[/bold red] No cached content found for {book_id.book_id}")
+                    continue
+                
+                # Transform to TEI
+                page_range = (start_page, end_page) if end_page else None
+                result = transformer.transform(cached_content, tei_path, page_range=page_range)
+                
+                output_manager.register_file(
+                    str(tei_path),
+                    output_type=OutputType.FINAL,
+                    format_name='tei',
+                    metadata={
+                        'book_id': book_id.book_id,
+                        'pages': result['statistics']['total_pages'],
+                        'paragraphs': result['statistics']['total_paragraphs'],
+                        'validation': result['validation']['valid']
+                    }
+                )
+                
+                # Display validation results
+                validation_status = "✅ Valid" if result['validation']['valid'] else "⚠️ Warnings"
+                console.print(f"📜 Saved TEI XML: [cyan]{tei_path.relative_to(output_path)}[/cyan] {validation_status}")
+                
+                # Show validation details if there are issues
+                if result['errors'] or result['warnings']:
+                    console.print(f"   [dim]Validation:[/dim]")
+                    for error in result['errors']:
+                        console.print(f"   [red]  • {error}[/red]")
+                    for warning in result['warnings']:
+                        console.print(f"   [yellow]  • {warning}[/yellow]")
             elif fmt == 'docx':
                 console.print(f"⚠️  DOCX transformation not yet implemented")
             else:
@@ -245,7 +284,50 @@ def transform(json_file, output, format, keep_interim):
             console.print(f"   Verses: {verses}")
         
         elif format == 'tei':
-            console.print("⚠️  TEI transformation not yet implemented")
+            with console.status("[bold green]Transforming to TEI XML..."):
+                # Load the JSON to get book_id
+                with open(json_path) as f:
+                    data = json.load(f)
+                    book_id = data.get('book_id', json_path.stem)
+                
+                # Load cached content
+                cache = RawContentCache()
+                cached_content = cache.load(book_id)
+                
+                if not cached_content:
+                    console.print(f"[bold red]❌ Error:[/bold red] No cached content found for {book_id}")
+                    console.print("[dim]TEI transformation requires the original cached HTML content.[/dim]")
+                    console.print("[dim]Please run extract command first to download and cache the content.[/dim]")
+                    return
+                
+                transformer = TEITransformer()
+                result = transformer.transform(cached_content, output_path)
+            
+            # Register as final output
+            output_manager.register_file(
+                str(output_path),
+                output_type=OutputType.FINAL,
+                format_name='tei',
+                metadata={
+                    'source': str(json_path),
+                    'pages': result['statistics']['total_pages'],
+                    'paragraphs': result['statistics']['total_paragraphs'],
+                    'validation': result['validation']['valid']
+                }
+            )
+            
+            validation_status = "✅ Valid" if result['validation']['valid'] else "⚠️ Warnings"
+            console.print(f"✅ TEI XML file generated: [cyan]{output_path}[/cyan] {validation_status}")
+            console.print(f"   Total pages: {result['statistics']['total_pages']}")
+            console.print(f"   Total paragraphs: {result['statistics']['total_paragraphs']}")
+            console.print(f"   Total words: {result['statistics']['total_words']:,}")
+            
+            # Show validation results
+            if result['validation']['checks']:
+                console.print(f"\n   [dim]Validation checks:[/dim]")
+                for check in result['validation']['checks']:
+                    status_icon = "✓" if check['status'] == 'PASSED' else ("⚠" if check['status'] == 'WARNING' else "✗")
+                    console.print(f"   {status_icon} {check['check']}: {check['message']}")
         
         elif format == 'docx':
             console.print("⚠️  DOCX transformation not yet implemented")
