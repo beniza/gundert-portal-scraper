@@ -12,7 +12,8 @@ A production-ready tool for extracting content from OpenDigi digital manuscript 
 - 📥 **Phase 1: Download** - Fetch entire manuscript once using Selenium
 - ⚡ **Phase 2: Process** - Extract content from cached data using BeautifulSoup
 - 💾 **Smart Caching** - Cache downloaded content (771KB for 201 pages)
-- � **Performance** - Reduces extraction time from 10s to 2s per page
+- 🔒 **Cache Protection** - Downloaded content never deleted automatically
+- 🚀 **Performance** - Reduces extraction time from 10s to 2s per page
 
 ### **Content Extraction**
 - 🔍 **OpenDigi Support** - Works with University of Tübingen's OpenDigi platform
@@ -74,13 +75,28 @@ The scraper extracts content with line-level preservation and includes image URL
 }
 ```
 
+### Cache Usage
+```bash
+# First extraction - downloads and caches
+uv run gundert-scraper extract https://opendigi.ub.uni-tuebingen.de/opendigi/GaXXXIV5a
+# Output: 📦 Downloading... ✅ Saved to cache/GaXXXIV5a_content.json
+
+# Subsequent extractions - uses cache (NO download!)
+uv run gundert-scraper extract https://opendigi.ub.uni-tuebingen.de/opendigi/GaXXXIV5a
+# Output: 📦 Loading from cache... ✅ 10-30x faster!
+
+# Force re-download if needed
+uv run gundert-scraper extract https://opendigi.ub.uni-tuebingen.de/opendigi/GaXXXIV5a --force-redownload
+```
+
+⚠️ **Important**: Cache files in `./cache/` are automatically preserved. Never deleted by cleanup operations. See [Cache Management Guide](docs/CACHE_MANAGEMENT.md) for details.
+
 ## 📚 Documentation
 
-- **[User Guide](docs/USER_GUIDE.md)** - Complete CLI usage and workflows
-- **[Developer Guide](docs/DEVELOPER_GUIDE.md)** - Architecture and API reference
-- **[Installation Guide](docs/INSTALLATION.md)** - Detailed setup instructions
-- **[API Reference](docs/API_REFERENCE.md)** - Programmatic interface documentation
-- **[Examples](examples/)** - Practical use cases and sample outputs
+- **[CACHE_MANAGEMENT.md](docs/CACHE_MANAGEMENT.md)** - Cache safety and backup strategies
+- **[USFM_TRANSFORMER.md](docs/USFM_TRANSFORMER.md)** - USFM format conversion guide
+- **[IMPLEMENTATION_SUMMARY.md](docs/IMPLEMENTATION_SUMMARY.md)** - Technical implementation details
+- **[project_reconstruction_guide.json](project_reconstruction_guide.json)** - Complete LLM recreation instructions
 
 ## 🏗️ Architecture
 
