@@ -14,17 +14,27 @@
   "architectural_learnings": {
     "two_phase_extraction_architecture": {
       "rationale": "SPA websites require different extraction strategy than traditional multi-page sites",
+      "cache_safety_critical": "IMPORTANT: Cache files in ./cache/ must NEVER be automatically deleted. They contain downloaded manuscript content that should persist across all operations. Only explicit user commands should clear cache.",
       "components": {
         "download_phase": {
           "purpose": "Single navigation to SPA website, cache all page structures and metadata",
           "implementation": "Selenium WebDriver with JavaScript execution to load dynamic content",
-          "cache_strategy": "Save complete HTML page source to JSON file with metadata timestamp"
+          "cache_strategy": "Save complete HTML page source to JSON file with metadata timestamp",
+          "cache_protection": "Check if cached before downloading. Use force_redownload=False by default to preserve cached content"
         },
         "processing_phase": {
           "purpose": "Extract real content from cached SPA DOM without browser",
           "key_insight": "All content is embedded in TEI XML within #transcript-content div. Use BeautifulSoup to parse cached HTML",
           "implementation": "Parse TEI <surface n='X'> elements for each page, extract text nodes while preserving line structure",
-          "performance": "Once cached, can extract any page range instantly without Selenium"
+          "performance": "Once cached, can extract any page range instantly without Selenium (10-30x faster)",
+          "cache_preservation": "Processing phase NEVER modifies or deletes cache files"
+        },
+        "cache_management_rules": {
+          "never_auto_delete": "Cache files must never be deleted by extract, transform, or cleanup operations",
+          "gitignore_required": "cache/ directory must be in .gitignore to prevent git commits",
+          "force_flag_required": "Re-downloading requires explicit --force-redownload flag",
+          "backup_recommended": "Users should backup cache/ directory locally (not in git)",
+          "typical_size": "771KB for 201-page manuscript - minimal storage overhead"
         }
       }
     },
@@ -86,6 +96,61 @@
         "ParaBible JSON",
 		"USFM"
       ]
+    },
+
+    "output_management_system": {
+      "rationale": "Distinguish between final deliverables and intermediate processing files for efficient disk space management",
+      "output_types": {
+        "final_outputs": {
+          "definition": "Primary deliverables - the very purpose of the process",
+          "examples": ["USFM files", "TEI XML files", "DOCX documents", "PDF publications"],
+          "storage": "output/final/<format>/",
+          "lifetime": "NEVER auto-deleted - these are the end products",
+          "protection": "Same level of protection as cache files"
+        },
+        "interim_outputs": {
+          "definition": "Intermediate files that facilitate production of final outputs",
+          "examples": ["Extracted JSON when transforming to USFM", "Temporary processing files", "Processing logs"],
+          "storage": "output/interim/<format>/",
+          "lifetime": "Can be cleaned up after transformation complete",
+          "cleanup_options": "Optional via --keep-interim or --clean-interim flags"
+        },
+        "cache": {
+          "definition": "Downloaded manuscript content",
+          "storage": "cache/",
+          "lifetime": "NEVER deleted - completely separate from output management",
+          "reference": "See cache_management_rules in two_phase_extraction_architecture"
+        }
+      },
+      "implementation": {
+        "class": "OutputManager in storage/output_manager.py",
+        "features": [
+          "Automatic organization into final/ and interim/ directories",
+          "Manifest tracking via .output_manifest.json",
+          "Statistics (file counts, sizes, space usage)",
+          "Safe cleanup operations (only interim files)",
+          "File registration with metadata"
+        ],
+        "cli_integration": [
+          "extract --keep-interim: Preserve interim files for debugging",
+          "extract --clean-interim: Auto-cleanup interim files for production",
+          "cleanup command: Manual cleanup with confirmation",
+          "cleanup --force: Non-interactive cleanup"
+        ]
+      },
+      "safety_guarantees": [
+        "Final outputs NEVER auto-deleted",
+        "Cache NEVER touched by output management",
+        "Interim files only deleted when explicitly requested",
+        "Manifest tracking prevents accidental data loss",
+        "Cleanup operations are reversible via backup"
+      ],
+      "use_cases": {
+        "development": "Use --keep-interim to inspect all intermediate files",
+        "production": "Use --clean-interim to minimize disk usage",
+        "batch_processing": "Use cleanup command after processing multiple books",
+        "debugging": "Retain interim files to troubleshoot transformation issues"
+      }
     }
   },
 
@@ -139,8 +204,9 @@
         ]
       },
       "storage/": {
-        "purpose": "Data schemas, persistence, format conversion",
-        "schemas.py": "BookStorage, PageContent, BookMetadata Pydantic models"
+        "purpose": "Data schemas, persistence, format conversion, output management",
+        "schemas.py": "BookStorage, PageContent, BookMetadata Pydantic models",
+        "output_manager.py": "OutputManager for organizing final vs interim outputs with cleanup"
       },
       "validation/": {
         "purpose": "Content quality assurance and format validation",
@@ -168,24 +234,34 @@
       "implement_cache_system": {
         "file": "src/gundert_portal_scraper/core/cache.py",
         "class": "RawContentCache",
+        "critical_rule": "CACHE MUST NEVER BE AUTO-DELETED - Cache contains downloaded manuscripts and should persist across all operations",
         "methods": [
           "save(book_id, content, metadata) - Save HTML to JSON cache",
           "load(book_id) - Load cached content",
           "is_cached(book_id) - Check if book is cached",
-          "clear(book_id) - Clear specific cache"
+          "clear(book_id) - ONLY for explicit user command, never auto-called"
         ],
-        "cache_format": "JSON file with content, metadata, cached_at timestamp"
+        "cache_format": "JSON file with content, metadata, cached_at timestamp",
+        "safety_requirements": [
+          "Check cache before any download operation",
+          "Never delete cache files automatically",
+          "Require force_redownload flag to override cache",
+          "Add cache/ to .gitignore",
+          "Never call clear() from extract/transform operations"
+        ]
       },
       "implement_two_phase_scraper": {
         "file": "src/gundert_portal_scraper/extraction/two_phase_scraper.py",
         "class": "TwoPhaseContentScraper",
+        "cache_safety": "MUST check cache first. Only download if not cached OR force_redownload=True",
         "download_phase_logic": [
-          "1. Check if book_id is cached, return cached if available",
+          "1. Check if book_id is cached, return cached if available (UNLESS force_redownload=True)",
           "2. If not cached: Connect Selenium to OpenDigi URL",
           "3. Wait for page load (3-5 seconds for SPA initialization)",
           "4. Extract driver.page_source (contains full embedded TEI XML)",
           "5. Save to cache with metadata",
-          "6. Return cached content"
+          "6. Return cached content",
+          "IMPORTANT: Cache is preserved - never deleted by this operation"
         ],
         "processing_phase_logic": [
           "1. Parse cached HTML with BeautifulSoup",
@@ -224,7 +300,47 @@
       }
     },
 
-    "4_content_transformation": {
+    "4_output_management": {
+      "implement_output_manager": {
+        "file": "src/gundert_portal_scraper/storage/output_manager.py",
+        "class": "OutputManager",
+        "critical_concept": "Distinguish between FINAL outputs (deliverables) and INTERIM outputs (temporary processing files)",
+        "output_types": {
+          "FINAL": "Deliverable files - NEVER deleted automatically (e.g., USFM, TEI XML, DOCX)",
+          "INTERIM": "Temporary processing files - CAN be cleaned up (e.g., extracted JSON, debug dumps)",
+          "CACHE": "Downloaded manuscripts - NEVER touched by output management"
+        },
+        "methods": [
+          "register_file(file_path, output_type, description, metadata) - Track output files",
+          "get_output_path(output_type, relative_path) - Get properly organized path",
+          "cleanup_interim() - Remove interim files only, preserve final and cache",
+          "get_statistics() - Show counts and sizes by output type",
+          "get_manifest() - Return all tracked files"
+        ],
+        "directory_structure": {
+          "output/final/": "Final deliverable files",
+          "output/interim/": "Temporary processing files",
+          "cache/": "Downloaded manuscripts (managed by RawContentCache)"
+        },
+        "manifest_tracking": ".output_manifest.json - Track all outputs with metadata",
+        "safety_requirements": [
+          "Final outputs NEVER deleted automatically",
+          "Cache NEVER touched by output management",
+          "Interim cleanup only when explicitly requested",
+          "Manifest persists to track file history"
+        ]
+      },
+      "cli_integration": {
+        "extract_command_flags": [
+          "--keep-interim - Keep interim files for debugging (development mode)",
+          "--clean-interim - Remove interim files after final output (production mode, default)"
+        ],
+        "cleanup_command": "Manual command to remove interim files: gundert-scraper cleanup --interim",
+        "statistics_display": "Show output counts and sizes by type in CLI tables"
+      }
+    },
+
+    "5_content_transformation": {
       "base_transformer_framework": {
         "abstract_methods": "transform(), is_compatible(), validate_input()",
         "line_mapping": "(Optional) Track source → output line relationships. The transcript contains a line level mapping (seperated by soft enter) with the image",
@@ -237,7 +353,7 @@
       }
     },
 
-    "4_cli_and_validation": {
+    "6_cli_and_validation": {
       "cli_implementation": {
         "extract_command": "URL → formats → output path workflow",
         "transform_command": "BookStorage → multiple output formats",
@@ -251,7 +367,7 @@
       }
     },
 
-    "5_testing_and_documentation": {
+    "7_testing_and_documentation": {
       "test_coverage": "Implement unit and integration tests",
       "test_categories": [
         "SPA extraction accuracy",
@@ -485,7 +601,12 @@
       "Forgetting to extract image URLs for page-to-image mapping",
       "Incorrect image URL padding - must be zero-padded to 3 digits (007 not 7)",
       "Not validating image URLs - test with curl to ensure accessibility",
-      "Hardcoding image URLs instead of generating them programmatically"
+      "Hardcoding image URLs instead of generating them programmatically",
+      "CRITICAL: Auto-deleting cache - Cache must NEVER be automatically deleted by any operation",
+      "Not checking cache before download - Always check cache first to avoid redundant downloads",
+      "Calling cache.clear() from extract/transform code - Only user commands should clear cache",
+      "Not using force_redownload flag - Re-downloading should require explicit user intent",
+      "Committing cache/ to git - Always add cache/ to .gitignore"
     ]
   },
 
