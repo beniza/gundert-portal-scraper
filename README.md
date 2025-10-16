@@ -183,8 +183,8 @@ MIT License - Free to use for academic and commercial purposes.
 
 - **Hermann Gundert** - 19th-century Malayalam linguist and scholar
 - **University of Tübingen** - OpenDigi digital manuscript platform
-- **Malayalam Digital Preservation** - Preserving historical texts
+- **Gundert Project Team Members** - For their tireless labour in preserving historical texts
 
 ---
 
-**Built for Malayalam biblical text preservation and digital humanities research**
+**Built by TFBF for Malayalam biblical text preservation and digital humanities research**
